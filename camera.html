@@ -1,17 +1,181 @@
 <!doctype html>
-<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>DARUMA — ถ่ายรูปลงเวลา</title>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#9f2349">
+<title>DARUMA · ถ่ายรูปลงเวลา</title>
 <style>
-*{box-sizing:border-box}body{margin:0;background:#f4f4f5;color:#18181b;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.top{background:linear-gradient(135deg,#7f1d1d,#dc2626);color:white;padding:22px}.wrap{max-width:520px;margin:18px auto;padding:0 14px}.card{background:white;border-radius:20px;padding:18px;box-shadow:0 5px 20px #0001}h1{font-size:21px;margin:0}p{line-height:1.5}.muted{color:#71717a;font-size:13px}.cam{width:100%;max-height:60vh;object-fit:cover;background:#18181b;border-radius:14px;margin-top:12px}button{width:100%;padding:15px;border:0;border-radius:13px;font:inherit;font-weight:800;margin-top:10px;background:#b91c1c;color:white}.secondary{background:#e4e4e7;color:#18181b}.hidden{display:none!important}.msg{padding:12px;border-radius:12px;background:#fee2e2;margin-top:12px}
-</style></head><body><header class="top"><h1>DARUMA PART-TIME ATTENDANCE</h1><div>ถ่ายรูปยืนยันการลงเวลา</div></header><main class="wrap"><section class="card"><h2 id="employee">กำลังตรวจสอบรายการ…</h2><p id="act" class="muted"></p><p>ตรวจสอบชื่อให้ถูกต้องก่อนถ่ายรูป และอนุญาตให้ Safari ใช้กล้อง</p><video id="video" class="cam" autoplay playsinline muted></video><canvas id="canvas" class="hidden"></canvas><img id="preview" class="cam hidden" alt="ภาพตัวอย่าง"><button id="start">เปิดกล้อง</button><button id="capture" class="hidden">📸 ถ่ายรูป</button><button id="retake" class="secondary hidden">ถ่ายใหม่</button><button id="submit" class="hidden">ยืนยันและบันทึก</button><div id="msg" class="msg hidden"></div><p class="muted">ระบบจะส่งรูปไปบันทึกใน Google Drive พร้อมเวลาใน Google Sheets</p></section></main>
+:root{--ink:#2d2632;--muted:#716875;--pink:#d83d6a;--pink2:#f16f94;--line:#ebdfe8;--green:#176b49;--red:#a52c42}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 0 0,#ffe1ec,transparent 38%),radial-gradient(ellipse at 100% 0,#eee8ff,transparent 32%),#fff8fb;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Tahoma,sans-serif;-webkit-font-smoothing:antialiased}
+.top{padding:19px 18px;background:linear-gradient(112deg,#76213f,#a72a55 48%,#d84d78);color:#fff;box-shadow:0 8px 24px #8e234a28}
+.topin{max-width:600px;margin:auto}
+.brand{font-weight:950;font-size:19px;letter-spacing:.1px}
+.sub{font-size:13px;color:#ffe8ef;margin-top:4px}
+.wrap{width:min(600px,100%);margin:20px auto;padding:0 14px 30px}
+.card{background:rgba(255,255,255,.96);border:1px solid #fff;border-radius:24px;padding:20px;box-shadow:0 16px 45px #5d284018}
+h1{font-size:21px;line-height:1.3;margin:0 0 8px;font-weight:950}
+p{line-height:1.6}
+.muted{font-size:14px;color:var(--muted);margin:0 0 14px}
+.meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:12px 0}
+.pill{background:#fff0f5;color:#993052;border:1px solid #f2d3df;border-radius:999px;padding:7px 11px;font-size:13px;font-weight:850}
+.cam{width:100%;max-height:58vh;min-height:230px;object-fit:cover;background:#211b25;border-radius:18px;margin-top:10px;display:block}
+.preview{width:100%;max-height:58vh;object-fit:contain;background:#201c24;border-radius:18px;margin-top:10px;display:block}
+button{width:100%;min-height:54px;padding:14px 16px;border:0;border-radius:15px;font:inherit;font-size:16px;font-weight:900;margin-top:11px;cursor:pointer;touch-action:manipulation;transition:transform .2s cubic-bezier(.16,1,.3,1),box-shadow .22s ease,opacity .2s ease}
+button:active{transform:scale(.98)}
+button:disabled{opacity:.48;cursor:wait}
+.primary{background:linear-gradient(120deg,#e9507a,#c72d5b);color:#fff;box-shadow:0 8px 20px #d83d6a30}
+.secondary{background:#f3edf3;color:#514657;border:1px solid #e7dce7}
+.notice{padding:13px 15px;border-radius:14px;background:#f5f0f5;border:1px solid #e9e1e9;color:#534958;font-size:14px;line-height:1.55;margin-top:12px}
+.notice.err{background:#fff0f1;border-color:#f2cbd2;color:#a1273b}
+.notice.ok{background:#e9f7ef;border-color:#cdebd9;color:#176344}
+.hidden{display:none!important}
+.steps{font-size:13px;color:#716875;line-height:1.6;margin-top:12px}
+@media(max-width:420px){.card{padding:16px;border-radius:20px}.top{padding:16px}.cam,.preview{min-height:210px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<header class="top"><div class="topin"><div class="brand">DARUMA PART-TIME ATTENDANCE</div><div class="sub">ถ่ายรูปยืนยันการลงเวลา</div></div></header>
+<main class="wrap">
+  <section class="card">
+    <h1>ยืนยันรายการลงเวลา</h1>
+    <p class="muted">กรุณาตรวจสอบรหัสพนักงานและรายการให้ตรงกับหน้าลงเวลาก่อนเปิดกล้อง</p>
+    <div class="meta">
+      <span id="employee" class="pill">รหัสพนักงาน: —</span>
+      <span id="act" class="pill">รายการ: —</span>
+    </div>
+
+    <video id="video" class="cam" autoplay playsinline muted></video>
+    <canvas id="canvas" class="hidden"></canvas>
+    <img id="preview" class="preview hidden" alt="ภาพตัวอย่างก่อนส่ง">
+
+    <button id="start" class="primary">เปิดกล้องหน้า</button>
+    <button id="capture" class="primary hidden">📸 ถ่ายรูป</button>
+    <button id="retake" class="secondary hidden">ถ่ายใหม่</button>
+    <button id="submit" class="primary hidden">ยืนยันและบันทึกเวลา</button>
+    <div id="msg" class="notice hidden" role="status" aria-live="polite"></div>
+    <p class="steps">ภาพจะถูกย่อขนาดก่อนส่งเพื่อให้บันทึกได้เร็วขึ้น ระบบจะบันทึกเวลาและลิงก์รูปไว้ใน Google Sheets / Drive</p>
+  </section>
+</main>
+
 <script>
-const q=new URLSearchParams(location.search),token=q.get('token')||'',employeeId=q.get('employeeId')||'',action=q.get('action')||'',name=q.get('name')||'',postUrl=q.get('postUrl')||'';
-const labels={CLOCK_IN:'เข้างาน',BREAK_START:'เข้าพัก',BREAK_END:'ออกจากพัก',CLOCK_OUT:'เลิกงาน'};
-const $=id=>document.getElementById(id);let stream=null,photo=null;
-$('employee').textContent=name||'ไม่พบชื่อพนักงาน';$('act').textContent=labels[action]||'รายการไม่ถูกต้อง';
-function show(t){$('msg').textContent=t;$('msg').classList.remove('hidden')}
-async function start(){try{if(!token||!employeeId||!labels[action]||!postUrl.startsWith('https://script.google.com/'))throw Error('ลิงก์ไม่ถูกต้อง กรุณากลับไปหน้าลงเวลา');if(!navigator.mediaDevices?.getUserMedia)throw Error('Safari ไม่รองรับการเปิดกล้องในหน้านี้ กรุณาใช้ HTTPS บน Safari');stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});$('video').srcObject=stream;await $('video').play();$('start').classList.add('hidden');$('capture').classList.remove('hidden')}catch(e){show('เปิดกล้องไม่ได้: '+e.message)}}
-function capture(){const v=$('video');if(!v.videoWidth)return show('กล้องยังไม่พร้อม กรุณารอสักครู่');const c=$('canvas'),scale=Math.min(1,1000/v.videoWidth);c.width=Math.round(v.videoWidth*scale);c.height=Math.round(v.videoHeight*scale);c.getContext('2d').drawImage(v,0,0,c.width,c.height);photo=c.toDataURL('image/jpeg',.75);$('preview').src=photo;$('preview').classList.remove('hidden');v.classList.add('hidden');$('capture').classList.add('hidden');$('retake').classList.remove('hidden');$('submit').classList.remove('hidden');if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}}
-function retake(){photo=null;$('preview').classList.add('hidden');$('video').classList.remove('hidden');$('retake').classList.add('hidden');$('submit').classList.add('hidden');start()}
-function submit(){if(!photo)return show('กรุณาถ่ายรูปก่อน');$('submit').disabled=true;$('submit').textContent='กำลังบันทึก…';const f=document.createElement('form');f.method='POST';f.action=postUrl;f.enctype='application/x-www-form-urlencoded';[['token',token],['employeeId',employeeId],['action',action],['imageData',photo]].forEach(([k,v])=>{const i=document.createElement('input');i.type='hidden';i.name=k;i.value=v;f.appendChild(i)});document.body.appendChild(f);f.submit()}
-$('start').addEventListener('click',start);$('capture').addEventListener('click',capture);$('retake').addEventListener('click',retake);$('submit').addEventListener('click',submit);
-</script></body></html>
+'use strict';
+const query = new URLSearchParams(location.search);
+const token = query.get('token') || '';
+const employeeId = query.get('employeeId') || '';
+const action = query.get('action') || '';
+const postUrl = query.get('postUrl') || '';
+const labels = {CLOCK_IN:'เข้างาน',BREAK_START:'เข้าพัก',BREAK_END:'ออกจากพัก',CLOCK_OUT:'เลิกงาน'};
+const $ = id => document.getElementById(id);
+let stream = null;
+let photo = null;
+let sending = false;
+
+$('employee').textContent = 'รหัสพนักงาน: ' + (employeeId || 'ไม่พบข้อมูล');
+$('act').textContent = 'รายการ: ' + (labels[action] || 'ไม่ถูกต้อง');
+
+function show(text,type){
+  $('msg').textContent = text;
+  $('msg').className = 'notice ' + (type || '');
+  $('msg').classList.remove('hidden');
+}
+function stopCamera(){
+  if(stream){stream.getTracks().forEach(track=>track.stop());stream=null;}
+  $('video').srcObject = null;
+}
+function validateLink(){
+  if(!/^[a-f0-9]{64}$/i.test(token)) throw new Error('ไม่พบ token ที่ถูกต้อง กรุณากลับไปหน้าลงเวลา');
+  if(!/^PT-[A-F0-9]{8}$/i.test(employeeId)) throw new Error('รหัสพนักงานไม่ถูกต้อง');
+  if(!labels[action]) throw new Error('รายการลงเวลาไม่ถูกต้อง');
+  const url = new URL(postUrl);
+  if(url.protocol!=='https:' || url.hostname!=='script.google.com' || !url.pathname.includes('/macros/')) {
+    throw new Error('ปลายทางบันทึกไม่ถูกต้อง กรุณากลับไปหน้าลงเวลา');
+  }
+}
+async function startCamera(){
+  const button = $('start');
+  button.disabled = true;
+  button.textContent = 'กำลังเปิดกล้อง…';
+  try{
+    validateLink();
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error('Safari ไม่สามารถเปิดกล้องจากหน้านี้ได้ กรุณาเปิดผ่าน HTTPS');
+    }
+    stopCamera();
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio:false,
+      video:{facingMode:{ideal:'user'},width:{ideal:1280},height:{ideal:720}}
+    });
+    $('video').srcObject = stream;
+    await $('video').play();
+    $('start').classList.add('hidden');
+    $('capture').classList.remove('hidden');
+    $('msg').classList.add('hidden');
+  }catch(error){
+    show('เปิดกล้องไม่ได้: '+error.message,'err');
+    button.disabled = false;
+    button.textContent = 'ลองเปิดกล้องอีกครั้ง';
+  }
+}
+function capturePhoto(){
+  const video = $('video');
+  if(!video.videoWidth){show('กล้องยังไม่พร้อม กรุณารอสักครู่แล้วลองใหม่','err');return;}
+  const canvas = $('canvas');
+  const scale = Math.min(1,1100/video.videoWidth);
+  canvas.width = Math.max(1,Math.round(video.videoWidth*scale));
+  canvas.height = Math.max(1,Math.round(video.videoHeight*scale));
+  const context = canvas.getContext('2d',{alpha:false});
+  context.drawImage(video,0,0,canvas.width,canvas.height);
+  photo = canvas.toDataURL('image/jpeg',0.76);
+  $('preview').src = photo;
+  $('preview').classList.remove('hidden');
+  $('video').classList.add('hidden');
+  $('capture').classList.add('hidden');
+  $('retake').classList.remove('hidden');
+  $('submit').classList.remove('hidden');
+  stopCamera();
+  show('ตรวจสอบภาพให้ชัดเจนก่อนกดยืนยัน','ok');
+}
+async function retakePhoto(){
+  photo=null;
+  $('preview').classList.add('hidden');
+  $('video').classList.remove('hidden');
+  $('retake').classList.add('hidden');
+  $('submit').classList.add('hidden');
+  $('start').classList.remove('hidden');
+  $('start').disabled=false;
+  $('start').textContent='เปิดกล้องหน้าอีกครั้ง';
+  await startCamera();
+}
+function submitPhoto(){
+  if(sending) return;
+  if(!photo){show('กรุณาถ่ายรูปก่อนกดยืนยัน','err');return;}
+  try{validateLink();}catch(error){show(error.message,'err');return;}
+  sending=true;
+  const button=$('submit');
+  button.disabled=true;
+  button.textContent='กำลังบันทึก… อย่าปิดหน้านี้';
+  // Submit as a normal form so Apps Script doPost receives the binary-safe form fields.
+  const form=document.createElement('form');
+  form.method='POST';
+  form.action=postUrl;
+  form.enctype='application/x-www-form-urlencoded';
+  form.acceptCharset='UTF-8';
+  [['token',token],['employeeId',employeeId],['action',action],['imageData',photo]].forEach(([key,value])=>{
+    const input=document.createElement('input');
+    input.type='hidden';input.name=key;input.value=value;form.appendChild(input);
+  });
+  document.body.appendChild(form);
+  form.submit();
+}
+$('start').addEventListener('click',startCamera);
+$('capture').addEventListener('click',capturePhoto);
+$('retake').addEventListener('click',retakePhoto);
+$('submit').addEventListener('click',submitPhoto);
+window.addEventListener('pagehide',stopCamera);
+try{validateLink();}catch(error){$('start').disabled=true;show(error.message,'err');}
+</script>
+</body>
+</html>
