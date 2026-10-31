@@ -56,6 +56,12 @@ button:disabled{opacity:.48;cursor:wait}
     <button id="retake" class="secondary hidden">ถ่ายใหม่</button>
     <button id="submit" class="primary hidden">ยืนยันและบันทึกเวลา</button>
     <div id="msg" class="notice hidden" role="status" aria-live="polite"></div>
+    <section id="donePanel" class="hidden" aria-live="polite">
+      <div id="doneTitle" class="notice ok"></div>
+      <div id="doneDetail" class="steps"></div>
+      <a id="returnHome" class="primary" style="display:block;text-align:center;text-decoration:none;padding:16px;border-radius:15px;margin-top:12px;font-weight:900;color:#fff" href="#">กลับไปหน้าลงเวลา</a>
+    </section>
+    <iframe id="responseFrame" name="attendanceResponseFrame" class="hidden" title="ผลการบันทึก"></iframe>
     <p class="steps">ภาพจะถูกย่อขนาดก่อนส่งเพื่อให้บันทึกได้เร็วขึ้น ระบบจะบันทึกเวลาและลิงก์รูปไว้ใน Google Sheets / Drive</p>
   </section>
 </main>
@@ -72,6 +78,8 @@ const $ = id => document.getElementById(id);
 let stream = null;
 let photo = null;
 let sending = false;
+let responseReceived = false;
+let responseTimer = null;
 
 $('employee').textContent = 'รหัสพนักงาน: ' + (employeeId || 'ไม่พบข้อมูล');
 $('act').textContent = 'รายการ: ' + (labels[action] || 'ไม่ถูกต้อง');
@@ -154,13 +162,16 @@ function submitPhoto(){
   if(!photo){show('กรุณาถ่ายรูปก่อนกดยืนยัน','err');return;}
   try{validateLink();}catch(error){show(error.message,'err');return;}
   sending=true;
+  responseReceived=false;
   const button=$('submit');
   button.disabled=true;
-  button.textContent='กำลังบันทึก… อย่าปิดหน้านี้';
-  // Submit as a normal form so Apps Script doPost receives the binary-safe form fields.
+  button.textContent='กำลังบันทึก… กรุณารอสักครู่';
+
+  const frame=$('responseFrame');
   const form=document.createElement('form');
   form.method='POST';
   form.action=postUrl;
+  form.target='attendanceResponseFrame';
   form.enctype='application/x-www-form-urlencoded';
   form.acceptCharset='UTF-8';
   [['token',token],['employeeId',employeeId],['action',action],['imageData',photo]].forEach(([key,value])=>{
@@ -168,8 +179,46 @@ function submitPhoto(){
     input.type='hidden';input.name=key;input.value=value;form.appendChild(input);
   });
   document.body.appendChild(form);
+  // Keep this camera page visible. The Apps Script response reports its result
+  // to this page with postMessage instead of replacing the screen.
+  frame.classList.add('hidden');
   form.submit();
+  form.remove();
+  responseTimer=setTimeout(()=>{
+    if(!responseReceived){
+      show('ส่งคำขอแล้ว แต่ยังไม่ได้รับผลยืนยันจากเซิร์ฟเวอร์ กรุณาตรวจสถานะที่หน้าหลักก่อนส่งซ้ำ','err');
+      button.disabled=true;
+      button.textContent='รอตรวจสอบผลการบันทึก';
+      showDoneAction('ตรวจสอบสถานะก่อนส่งซ้ำ','กลับไปหน้าลงเวลา');
+    }
+  },30000);
 }
+
+function showDoneAction(title, detail){
+  $('donePanel').classList.remove('hidden');
+  $('doneTitle').textContent=title;
+  $('doneDetail').textContent=detail || '';
+  $('returnHome').href=postUrl;
+}
+
+window.addEventListener('message',event=>{
+  const frame=$('responseFrame');
+  if(!frame || event.source!==frame.contentWindow) return;
+  const data=event.data;
+  if(!data || data.type!=='DARUMA_ATTENDANCE_RESULT') return;
+  responseReceived=true;
+  if(responseTimer) clearTimeout(responseTimer);
+  $('submit').disabled=true;
+  $('submit').textContent=data.ok?'บันทึกเรียบร้อยแล้ว':'บันทึกไม่สำเร็จ';
+  $('retake').classList.add('hidden');
+  $('donePanel').classList.remove('hidden');
+  $('doneTitle').textContent=data.title || (data.ok?'บันทึกสำเร็จ':'บันทึกไม่สำเร็จ');
+  $('doneTitle').className='notice '+(data.ok?'ok':'err');
+  $('doneDetail').textContent=data.detail || '';
+  $('returnHome').href=postUrl;
+  $('returnHome').textContent='กลับไปหน้าลงเวลา';
+  show(data.ok?'บันทึกเวลาและรูปเรียบร้อยแล้ว':'เกิดปัญหาในการบันทึก กรุณาอ่านข้อความด้านบน',''+(data.ok?'ok':'err'));
+});
 $('start').addEventListener('click',startCamera);
 $('capture').addEventListener('click',capturePhoto);
 $('retake').addEventListener('click',retakePhoto);
