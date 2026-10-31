@@ -45,7 +45,21 @@ function submitPhoto(){if(sending)return;if(!photo){show('กรุณาถ่�
   const form=document.createElement('form');form.method='POST';form.action=postUrl;form.target='attendanceResultFrame';form.enctype='application/x-www-form-urlencoded';form.acceptCharset='UTF-8';[['token',token],['employeeId',employeeId],['action',action],['imageData',photo]].forEach(([key,value])=>{const input=document.createElement('input');input.type='hidden';input.name=key;input.value=value;form.appendChild(input);});document.body.appendChild(form);form.submit();setTimeout(()=>form.remove(),1200);
   responseTimer=setTimeout(()=>{if(!responseReceived){button.textContent='ผลการบันทึกยังไม่ยืนยัน';show('ยังไม่ได้รับการยืนยันจากเซิร์ฟเวอร์ ข้อมูลอาจบันทึกแล้ว กรุณากลับไปตรวจสถานะที่หน้าหลักก่อน ห้ามกดส่งซ้ำทันที','err');showDone(false,'กำลังตรวจสอบผลการบันทึก','กลับหน้าหลักเพื่อตรวจสอบสถานะก่อนส่งรายการใหม่');}},25000);
 }
-window.addEventListener('message',event=>{const frame=$('responseFrame');if(!frame||event.source!==frame.contentWindow)return;const data=event.data;if(!data||data.type!=='DARUMA_ATTENDANCE_RESULT'||data.token!==token)return;responseReceived=true;if(responseTimer)clearTimeout(responseTimer);sending=true;$('submit').disabled=true;$('submit').textContent=data.ok?'บันทึกเรียบร้อยแล้ว':'บันทึกไม่สำเร็จ';$('retake').classList.add('hidden');show(data.ok?'บันทึกเวลาและรูปเรียบร้อยแล้ว':'เกิดปัญหาในการบันทึก',''+(data.ok?'ok':'err'));showDone(!!data.ok,data.title,data.detail);});
+window.addEventListener('message',event=>{
+  const data=event.data;
+  // HtmlService can wrap the response in an additional sandbox iframe. In that
+  // case event.source is not responseFrame.contentWindow, even though the result
+  // originated from our POST. The unguessable, one-use token is the authenticator.
+  if(!data||data.type!=='DARUMA_ATTENDANCE_RESULT'||data.token!==token)return;
+  if(!sending||responseReceived)return;
+  responseReceived=true;
+  if(responseTimer)clearTimeout(responseTimer);
+  $('submit').disabled=true;
+  $('submit').textContent=data.ok?'บันทึกเรียบร้อยแล้ว':'บันทึกไม่สำเร็จ';
+  $('retake').classList.add('hidden');
+  show(data.ok?'บันทึกเวลาและรูปเรียบร้อยแล้ว':'เกิดปัญหาในการบันทึก',data.ok?'ok':'err');
+  showDone(!!data.ok,data.title,data.detail);
+});
 $('start').addEventListener('click',startCamera);$('capture').addEventListener('click',capturePhoto);$('retake').addEventListener('click',retakePhoto);$('submit').addEventListener('click',submitPhoto);window.addEventListener('pagehide',stopCamera);try{validate();}catch(e){$('start').disabled=true;show(e.message,'err');}
 </script>
 </body></html>
